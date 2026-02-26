@@ -1,5 +1,6 @@
 
 import React, { useMemo, useState, useEffect } from 'react';
+
 import {
     BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
     PieChart, Pie, Cell, Radar, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis
@@ -51,28 +52,23 @@ const getScore = (val, type = 'positive') => {
         return 4 - idx;
     }
 
+    // Scale D: Avoidance Reasons (New Google Forms format)
+    // 非常にある(4) > 多少あり(3) > あまりなし(2) > 全くなし(1)
+    const avoidScale = ['全くなし', 'あまりなし', '多少あり', '非常にある'];
+    idx = avoidScale.indexOf(v);
+    if (idx !== -1) {
+        return idx + 1;
+    }
+
     return 0; // Unknown or N/A
 };
 
-const Dashboard = ({ data, onClear }) => {
+const Dashboard = ({ data, onRefresh, lastFetched }) => {
     const [selectedMonth, setSelectedMonth] = useState('');
-    const [isCopying, setIsCopying] = useState(false);
 
-    const handleShareLink = () => {
-        try {
-            const json = JSON.stringify(data);
-            const encoded = btoa(unescape(encodeURIComponent(json)));
-            const url = `${window.location.origin}${window.location.pathname}#${encoded}`;
 
-            navigator.clipboard.writeText(url).then(() => {
-                setIsCopying(true);
-                setTimeout(() => setIsCopying(false), 2000);
-            });
-        } catch (e) {
-            console.error("Failed to generate share link", e);
-            alert("データ量が大きすぎるため、URLでの共有ができません。別の方法で共有してください。");
-        }
-    };
+
+
 
     // Helper to safely parse dates from various formats (Excel serial, string)
     const parseDate = (value) => {
@@ -278,14 +274,20 @@ const Dashboard = ({ data, onClear }) => {
                 </div>
 
                 <div className="sidebar-section" style={{ marginTop: 'auto' }}>
-                    <button onClick={handleShareLink} className="sidebar-btn secondary" style={{ marginBottom: '0.5rem' }}>
-                        {isCopying ? '✅ コピー完了' : '🔗 共有リンクをコピー'}
-                    </button>
+                    {onRefresh && (
+                        <>
+                            <button onClick={onRefresh} className="sidebar-btn" style={{ background: '#10b981', marginBottom: '0.5rem' }}>
+                                🔄 データを更新
+                            </button>
+                            {lastFetched && (
+                                <p style={{ fontSize: '0.7rem', color: '#64748b', textAlign: 'center', marginBottom: '0.5rem' }}>
+                                    最終取得: {lastFetched}
+                                </p>
+                            )}
+                        </>
+                    )}
                     <button onClick={handlePrint} className="sidebar-btn primary" style={{ marginBottom: '0.5rem' }}>
                         レポートを印刷 (PDF)
-                    </button>
-                    <button onClick={onClear} className="sidebar-btn danger" style={{ background: '#ef4444', color: 'white' }}>
-                        データをリセット
                     </button>
                     <p className="copyright">&copy; 2026 ヒヤリハット集計システム - 労働安全衛生分析ダッシュボード</p>
                 </div>
@@ -486,6 +488,7 @@ const Dashboard = ({ data, onClear }) => {
                                         <th>記入日</th>
                                         <th>場所</th>
                                         <th>体験内容</th>
+                                        <th>どうなったか</th>
                                         <th>原因</th>
                                         <th>回避できた理由</th>
                                     </tr>
@@ -499,6 +502,7 @@ const Dashboard = ({ data, onClear }) => {
                                                 <td>{formattedDate}</td>
                                                 <td>{findValue(row, 'どの場所で') || '-'}</td>
                                                 <td>{findValue(row, '体験か') || '-'}</td>
+                                                <td>{findValue(row, 'どうなったか') || '-'}</td>
                                                 <td>{findValue(row, '発生原因') || '-'}</td>
                                                 <td>{findValue(row, '回避できた理由') || '-'}</td>
                                             </tr>
